@@ -17,20 +17,28 @@ if ( !function_exists( 'add_action' ) ) {
 	echo 'Hi there!  I\'m just a plugin, not much I can do when called directly.';
 	exit;
 }
-
+define( 'WP_DEBUG', true );
 define( 'CHATBOT__PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-
-
+require CHATBOT__PLUGIN_DIR . 'chatbot_client.php' ;
 /**
  * Proper way to enqueue scripts and styles
  */
 
 function chatbot_scripts_basic()
 {
-    wp_register_script( 'chatbot-client', plugins_url( '/script.js', __FILE__ ) );
+	$filetime = filemtime( CHATBOT__PLUGIN_DIR . '/script.js');
+    wp_register_script( 'chatbot-client',
+						plugins_url( '/script.js', __FILE__ ), 
+						array(),
+						$filetime );
 
+	$ajax_settings_array = array(
+		'chatbox_ajax_url' => admin_url( 'admin-ajax.php' ),
+		'nonce' =>  wp_create_nonce('chatbox_call_ms'),
+		'action' => 'chatbox_call_ms'
+	);
+	wp_localize_script( 'chatbot-client', 'chatbox_params', $ajax_settings_array );
  
-    // For either a plugin or a theme, you can then enqueue the script:
     wp_enqueue_script( 'chatbot-client' );
     wp_enqueue_script( 'chatbot-style' );
 }
@@ -41,45 +49,7 @@ function add_ajax_actions() {
     add_action('wp_ajax_nopriv_chatbox_call_ms', 'chatbox_call_ms');
 }
 add_action( 'init', 'add_ajax_actions' );
-add_filter('the_content', 'chatbox_generate_client');
-
-
-/**
- * Publisht the chatbox
- */
-function chatbox_generate_client($content)
-{
-    // run only for single post page
-    if (is_single() && in_the_loop() && is_main_query()) {
-        // add query arguments: action, post, nonce
-
-        $nonce = wp_create_nonce('chatbox_call_ms');
-        $ajax_url = admin_url( 'admin-ajax.php' );
-        $chatbox = <<<EOT
-<div id='bodybox'>
-  <div id='chatborder'>
-    <p id="chatlog7" class="chatlog">&nbsp;</p>
-    <p id="chatlog6" class="chatlog">&nbsp;</p>
-    <p id="chatlog5" class="chatlog">&nbsp;</p>
-    <p id="chatlog4" class="chatlog">&nbsp;</p>
-    <p id="chatlog3" class="chatlog">&nbsp;</p>
-    <p id="chatlog2" class="chatlog">&nbsp;</p>
-    <p id="chatlog1" class="chatlog">&nbsp;</p>
-    <input type="text" name="chat" id="chatbox" placeholder="Hi there! Ask your question!" onfocus="placeHolder()">
-  </div>
-</div>
-<script>
-var chatbox_ajax_url = '$ajax_url';
-var chatbox_params = { nonce: '$nonce', action: 'chatbox_call_ms' };
-</script>
-
-EOT;
-
-        return $content . $chatbox;
-        //' <a href="' . esc_url($url) . '">' . esc_html__('Delete Post', 'wporg') . '</a>';
-    }
-    return null;
-}
+add_filter( 'the_content', chatbox_generate_client);
  
 /**
  * request handler
@@ -118,6 +88,7 @@ curl_setopt($ch,CURLOPT_URL, $url);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
 curl_setopt($ch,CURLOPT_POSTFIELDS, $data_string);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($curlhandle, CURLOPT_VERBOSE, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, array(
     $api_key_header,
     'Content-Type: application/json',
@@ -128,6 +99,8 @@ $result = curl_exec($ch);
 
 //close connection
 curl_close($ch);
+
+echo $result;
 
 return $result;
 }

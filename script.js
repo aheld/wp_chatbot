@@ -1,3 +1,4 @@
+// Inspired by http://codepen.io/lilgreenland/pen/pyVvqB
 
 var messages = [], //array that hold the record of each string in chat
   lastUserMessage = "", //keeps track of the most recent input string from the user
@@ -20,7 +21,7 @@ function callBot(question){
     params = chatbox_params;
     params.question = question;
 	jQuery.ajax({
-	  url: chatbox_ajax_url,
+	  url: chatbox_params.chatbox_ajax_url,
       method: 'POST',
 	  data: params,
       dataType: 'json',
